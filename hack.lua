@@ -1,4 +1,4 @@
--- 🍌 BANANA EATS v1.3 - Multi-Theme Hack Menu
+-- 🍌 BANANA EATS v1.4 - Multi-Theme Hack Menu
 -- Desenvolvido por: UnderJonh (João Augusto)
 -- GitHub: https://github.com/underjonh
 -- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse
@@ -25,7 +25,7 @@ local velocityInstance = nil
 
 -- Loadstring GUI (Kavo UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("🍌 BANANA EATS v1.3 | by UnderJonh", getgenv().Config.Theme)
+local Window = Library.CreateLib("🍌 BANANA EATS v1.4 | by UnderJonh", getgenv().Config.Theme)
 
 -- ===== THEME TAB =====
 local ThemeTab = Window:NewTab("🎨 Themes")
@@ -36,13 +36,11 @@ local themes = {
     "Ocean", "Midnight", "Sentinel", "Synapse"
 }
 
-ThemeSec:NewDropdown("Escolha o Tema", "Troca apenas as cores da GUI", themes, function(currentTheme)
+ThemeSec:NewDropdown("Escolha o Tema", "Troca as cores da interface", themes, function(currentTheme)
     getgenv().Config.Theme = currentTheme
     Library:ChangeTheme(currentTheme)
     warn("✅ Tema alterado para: " .. currentTheme)
 end)
-
-ThemeSec:NewLabel("Tema Atual: " .. getgenv().Config.Theme)
 
 -- ===== ESP TAB =====
 local ESPTab = Window:NewTab("👁️ Visuals")
@@ -120,28 +118,19 @@ end)
 local CreditsTab = Window:NewTab("📌 Credits")
 local CreditsSec = CreditsTab:NewSection("Desenvolvedor")
 
-CreditsSec:NewLabel("🍌 BANANA EATS v1.3")
+CreditsSec:NewLabel("🍌 BANANA EATS v1.4")
 CreditsSec:NewLabel("Desenvolvido por: UnderJonh")
-CreditsSec:NewLabel("Nome: João Augusto")
-CreditsSec:NewLabel("GitHub: github.com/underjonh")
-CreditsSec:NewLabel("")
 CreditsSec:NewLabel("⭐ Se gostou, deixe uma estrela!")
+CreditsSec:NewLabel("GitHub: github.com/underjonh")
 
 CreditsSec:NewButton("📋 Copiar GitHub Link", "Copia para área de transferência", function()
     setclipboard("https://github.com/underjonh")
     warn("✅ Link copiado: https://github.com/underjonh")
 end)
 
-local InfoSec = CreditsTab:NewSection("Informações do Script")
-InfoSec:NewLabel("Versão: 1.3")
-InfoSec:NewLabel("Data: 22/12/2025")
-InfoSec:NewLabel("Tema Atual: " .. getgenv().Config.Theme)
+local InfoSec = CreditsTab:NewSection("Informações")
+InfoSec:NewLabel("Versão: 1.4")
 InfoSec:NewLabel("Features: ESP, WallHack, Speed")
-InfoSec:NewLabel("")
-InfoSec:NewLabel("Changelog v1.3:")
-InfoSec:NewLabel("- Dropdown de temas")
-InfoSec:NewLabel("- Interface mais limpa")
-InfoSec:NewLabel("- Estabilidade melhorada")
 
 -- ===== MISC TAB =====
 local MiscTab = Window:NewTab("⚙️ Misc")
@@ -166,9 +155,8 @@ end)
 
 MiscSec:NewLabel("Tip: Use RightShift para abrir/fechar")
 
--- ===== FUNÇÕES CORE (CORRIGIDAS) =====
+-- ===== FUNÇÕES CORE =====
 
--- ESP Corrigido com Drawing API
 function createESP(target)
     if target == player or not target.Character then return end
     if espConnections[target] then return end
@@ -228,7 +216,6 @@ function createESP(target)
     espConnections[target] = {box = box, nameTag = nameTag, connection = connection}
 end
 
--- WallHack Corrigido
 function createWallHack(target)
     if target == player or not target.Character then return end
     if highlightObjects[target] then return end
@@ -256,7 +243,6 @@ function createWallHack(target)
     end
 end
 
--- Velocity Speed (Sem Rollback)
 function enableVelocitySpeed()
     disableSpeed()
     
@@ -315,7 +301,7 @@ function disableSpeed()
     end
 end
 
--- ===== EVENTOS (CORRIGIDOS) =====
+-- ===== EVENTOS =====
 
 player.CharacterAdded:Connect(function(char)
     task.wait(1)
@@ -365,10 +351,8 @@ for _, p in pairs(Players:GetPlayers()) do
     end)
 end
 
-print("🍌 BANANA EATS v1.3 Loaded!")
+print("🍌 BANANA EATS v1.4 Loaded!")
 print("👨‍💻 Desenvolvido por: UnderJonh (João Augusto)")
 print("🌐 GitHub: https://github.com/underjonh")
-print("🎨 Tema Atual: " .. getgenv().Config.Theme)
 print("⚡ Velocity Speed = SEM ROLLBACK!")
 print("📌 RightShift = Toggle Menu")
-print("✨ Changelog v1.3: Dropdown de temas + interface limpa!")

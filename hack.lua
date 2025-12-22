@@ -1,7 +1,7 @@
--- 🍌 BANANA EATS v1.1 - Multi-Theme Hack Menu
--- Desenvolvido por: UnderJonh
+-- 🍌 BANANA EATS v1.3 - Multi-Theme Hack Menu
+-- Desenvolvido por: UnderJonh (João Augusto)
 -- GitHub: https://github.com/underjonh
--- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse, LiquidGlass
+-- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse
 -- Compatível: Synapse X, Krnl, Fluxus, Wave, Delta, Solara
 
 getgenv().Config = getgenv().Config or {
@@ -23,54 +23,26 @@ local highlightObjects = {}
 local speedConnection = nil
 local velocityInstance = nil
 
--- Tema LiquidGlass Customizado
-local LiquidGlassTheme = {
-    SchemeColor = Color3.fromRGB(100, 200, 255),
-    Background = Color3.fromRGB(20, 25, 35),
-    Header = Color3.fromRGB(30, 40, 55),
-    TextColor = Color3.fromRGB(255, 255, 255),
-    ElementColor = Color3.fromRGB(25, 35, 50)
-}
-
 -- Loadstring GUI (Kavo UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("🍌 BANANA EATS v1.1 | by UnderJonh", getgenv().Config.Theme)
+local Window = Library.CreateLib("🍌 BANANA EATS v1.3 | by UnderJonh", getgenv().Config.Theme)
 
 -- ===== THEME TAB =====
 local ThemeTab = Window:NewTab("🎨 Themes")
-local ThemeSec = ThemeTab:NewSection("Escolha seu tema")
+local ThemeSec = ThemeTab:NewSection("Seletor de Tema")
 
 local themes = {
     "DarkTheme", "LightTheme", "GrapeTheme", "BloodTheme", 
     "Ocean", "Midnight", "Sentinel", "Synapse"
 }
 
-for _, themeName in pairs(themes) do
-    ThemeSec:NewButton(themeName, "Aplicar tema " .. themeName, function()
-        getgenv().Config.Theme = themeName
-        pcall(function()
-            game.CoreGui:FindFirstChild("Kavo"):Destroy()
-        end)
-        
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-        Window = Library.CreateLib("🍌 BANANA EATS v1.1 | by UnderJonh", themeName)
-        
-        warn("⚠️ GUI recriada! Tema aplicado: " .. themeName)
-        warn("🔄 Execute o script novamente para aplicar completamente")
-    end)
-end
-
-ThemeSec:NewButton("LiquidGlass (Custom)", "Tema translúcido estilo iOS 26", function()
-    pcall(function()
-        game.CoreGui:FindFirstChild("Kavo"):Destroy()
-    end)
-    
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-    Window = Library.CreateLib("🍌 BANANA EATS v1.1 | by UnderJonh", LiquidGlassTheme)
-    
-    warn("✨ LiquidGlass Theme Aplicado!")
-    warn("🔄 Execute o script novamente para recriar todas as funcionalidades")
+ThemeSec:NewDropdown("Escolha o Tema", "Troca apenas as cores da GUI", themes, function(currentTheme)
+    getgenv().Config.Theme = currentTheme
+    Library:ChangeTheme(currentTheme)
+    warn("✅ Tema alterado para: " .. currentTheme)
 end)
+
+ThemeSec:NewLabel("Tema Atual: " .. getgenv().Config.Theme)
 
 -- ===== ESP TAB =====
 local ESPTab = Window:NewTab("👁️ Visuals")
@@ -86,8 +58,15 @@ ESPSec:NewToggle("ESP Boxes", "Caixas vermelhas nos players", function(state)
         end
     else
         for _, data in pairs(espConnections) do
-            if data and data.box then data.box:Remove() end
-            if data and data.connection then data.connection:Disconnect() end
+            if data and data.box then 
+                pcall(function() data.box:Remove() end)
+            end
+            if data and data.nameTag then 
+                pcall(function() data.nameTag:Remove() end)
+            end
+            if data and data.connection then 
+                pcall(function() data.connection:Disconnect() end)
+            end
         end
         espConnections = {}
     end
@@ -103,7 +82,9 @@ ESPSec:NewToggle("WallHack", "Highlight através de paredes", function(state)
         end
     else
         for _, hl in pairs(highlightObjects) do
-            if hl then hl:Destroy() end
+            if hl then 
+                pcall(function() hl:Destroy() end)
+            end
         end
         highlightObjects = {}
     end
@@ -139,8 +120,9 @@ end)
 local CreditsTab = Window:NewTab("📌 Credits")
 local CreditsSec = CreditsTab:NewSection("Desenvolvedor")
 
-CreditsSec:NewLabel("🍌 BANANA EATS v1.1")
+CreditsSec:NewLabel("🍌 BANANA EATS v1.3")
 CreditsSec:NewLabel("Desenvolvido por: UnderJonh")
+CreditsSec:NewLabel("Nome: João Augusto")
 CreditsSec:NewLabel("GitHub: github.com/underjonh")
 CreditsSec:NewLabel("")
 CreditsSec:NewLabel("⭐ Se gostou, deixe uma estrela!")
@@ -150,48 +132,69 @@ CreditsSec:NewButton("📋 Copiar GitHub Link", "Copia para área de transferên
     warn("✅ Link copiado: https://github.com/underjonh")
 end)
 
-CreditsSec:NewButton("🌐 Abrir GitHub", "Abre perfil no navegador", function()
-    warn("🌐 Abrindo: https://github.com/underjonh")
-end)
-
 local InfoSec = CreditsTab:NewSection("Informações do Script")
-InfoSec:NewLabel("Versão: 1.1")
+InfoSec:NewLabel("Versão: 1.3")
 InfoSec:NewLabel("Data: 22/12/2025")
 InfoSec:NewLabel("Tema Atual: " .. getgenv().Config.Theme)
 InfoSec:NewLabel("Features: ESP, WallHack, Speed")
+InfoSec:NewLabel("")
+InfoSec:NewLabel("Changelog v1.3:")
+InfoSec:NewLabel("- Dropdown de temas")
+InfoSec:NewLabel("- Interface mais limpa")
+InfoSec:NewLabel("- Estabilidade melhorada")
 
 -- ===== MISC TAB =====
 local MiscTab = Window:NewTab("⚙️ Misc")
 local MiscSec = MiscTab:NewSection("Configurações")
 
 MiscSec:NewButton("Destroy GUI", "Remove o menu", function()
-    Library:ToggleUI()
     disableSpeed()
+    for _, data in pairs(espConnections) do
+        if data and data.box then pcall(function() data.box:Remove() end) end
+        if data and data.nameTag then pcall(function() data.nameTag:Remove() end) end
+        if data and data.connection then pcall(function() data.connection:Disconnect() end) end
+    end
+    for _, hl in pairs(highlightObjects) do
+        if hl then pcall(function() hl:Destroy() end) end
+    end
+    pcall(function() game.CoreGui:FindFirstChild("Kavo"):Destroy() end)
 end)
 
 MiscSec:NewKeybind("Toggle Menu", "Tecla para abrir/fechar", Enum.KeyCode.RightShift, function()
     Library:ToggleUI()
 end)
 
--- ===== FUNÇÕES CORE =====
+MiscSec:NewLabel("Tip: Use RightShift para abrir/fechar")
 
+-- ===== FUNÇÕES CORE (CORRIGIDAS) =====
+
+-- ESP Corrigido com Drawing API
 function createESP(target)
     if target == player or not target.Character then return end
+    if espConnections[target] then return end
     
     local box = Drawing.new("Square")
     box.Thickness = 2
     box.Color = Color3.fromRGB(255, 0, 0)
     box.Transparency = 1
     box.Filled = false
-    box.Visible = true
+    box.Visible = false
     box.ZIndex = 2
+    
+    local nameTag = Drawing.new("Text")
+    nameTag.Text = target.Name
+    nameTag.Size = 16
+    nameTag.Center = true
+    nameTag.Outline = true
+    nameTag.OutlineColor = Color3.fromRGB(0, 0, 0)
+    nameTag.Color = Color3.fromRGB(255, 255, 255)
+    nameTag.Visible = false
     
     local connection = RunService.RenderStepped:Connect(function()
         pcall(function()
-            if not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
-                box:Remove()
-                connection:Disconnect()
-                espConnections[target] = nil
+            if not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") or not target.Character:FindFirstChild("Humanoid") or target.Character.Humanoid.Health <= 0 then
+                box.Visible = false
+                nameTag.Visible = false
                 return
             end
             
@@ -199,25 +202,36 @@ function createESP(target)
             local head = target.Character:FindFirstChild("Head")
             
             if hrp and head then
-                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                local headPos = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                local legPos = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                local rootPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
                 
-                local height = math.abs(headPos.Y - legPos.Y)
-                local width = height * 0.6
-                
-                box.Size = Vector2.new(width, height)
-                box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
-                box.Visible = onScreen
+                if onScreen then
+                    local headPos = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                    local legPos = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                    
+                    local height = math.abs(headPos.Y - legPos.Y)
+                    local width = height * 0.6
+                    
+                    box.Size = Vector2.new(width, height)
+                    box.Position = Vector2.new(rootPos.X - width/2, rootPos.Y - height/2)
+                    box.Visible = true
+                    
+                    nameTag.Position = Vector2.new(rootPos.X, rootPos.Y - height/2 - 15)
+                    nameTag.Visible = true
+                else
+                    box.Visible = false
+                    nameTag.Visible = false
+                end
             end
         end)
     end)
     
-    espConnections[target] = {box = box, connection = connection}
+    espConnections[target] = {box = box, nameTag = nameTag, connection = connection}
 end
 
+-- WallHack Corrigido
 function createWallHack(target)
     if target == player or not target.Character then return end
+    if highlightObjects[target] then return end
     
     local highlight = Instance.new("Highlight")
     highlight.Name = "WH_" .. target.Name
@@ -225,12 +239,24 @@ function createWallHack(target)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.5
     highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Adornee = target.Character
     highlight.Parent = target.Character
     
     highlightObjects[target] = highlight
+    
+    local humanoid = target.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(function()
+            if highlightObjects[target] then
+                pcall(function() highlightObjects[target]:Destroy() end)
+                highlightObjects[target] = nil
+            end
+        end)
+    end
 end
 
+-- Velocity Speed (Sem Rollback)
 function enableVelocitySpeed()
     disableSpeed()
     
@@ -289,7 +315,8 @@ function disableSpeed()
     end
 end
 
--- ===== EVENTOS =====
+-- ===== EVENTOS (CORRIGIDOS) =====
+
 player.CharacterAdded:Connect(function(char)
     task.wait(1)
     
@@ -303,11 +330,26 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
+    p.CharacterAdded:Connect(function(char)
         task.wait(1)
         if getgenv().Config.ESP then createESP(p) end
         if getgenv().Config.WallHack then createWallHack(p) end
     end)
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if espConnections[p] then
+        local data = espConnections[p]
+        if data.box then pcall(function() data.box:Remove() end) end
+        if data.nameTag then pcall(function() data.nameTag:Remove() end) end
+        if data.connection then pcall(function() data.connection:Disconnect() end) end
+        espConnections[p] = nil
+    end
+    
+    if highlightObjects[p] then
+        pcall(function() highlightObjects[p]:Destroy() end)
+        highlightObjects[p] = nil
+    end
 end)
 
 for _, p in pairs(Players:GetPlayers()) do
@@ -315,11 +357,18 @@ for _, p in pairs(Players:GetPlayers()) do
         if getgenv().Config.ESP then createESP(p) end
         if getgenv().Config.WallHack then createWallHack(p) end
     end
+    
+    p.CharacterAdded:Connect(function(char)
+        task.wait(1)
+        if getgenv().Config.ESP then createESP(p) end
+        if getgenv().Config.WallHack then createWallHack(p) end
+    end)
 end
 
-print("🍌 BANANA EATS v1.1 Loaded!")
-print("👨‍💻 Desenvolvido por: UnderJonh")
+print("🍌 BANANA EATS v1.3 Loaded!")
+print("👨‍💻 Desenvolvido por: UnderJonh (João Augusto)")
 print("🌐 GitHub: https://github.com/underjonh")
 print("🎨 Tema Atual: " .. getgenv().Config.Theme)
 print("⚡ Velocity Speed = SEM ROLLBACK!")
 print("📌 RightShift = Toggle Menu")
+print("✨ Changelog v1.3: Dropdown de temas + interface limpa!")

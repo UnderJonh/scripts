@@ -1,13 +1,16 @@
--- 🔥 HACK GUI v6.0 - SEM ROLLBACK (Velocity Bypass)
+-- 🍌 BANANA EATS v1.1 - Multi-Theme Hack Menu
+-- Desenvolvido por: UnderJonh
+-- GitHub: https://github.com/underjonh
+-- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse, LiquidGlass
 -- Compatível: Synapse X, Krnl, Fluxus, Wave, Delta, Solara
--- Método: AssemblyLinearVelocity (bypassa 95% dos anti-cheats)
 
 getgenv().Config = getgenv().Config or {
     ESP = false,
     WallHack = false,
     Speed = false,
     SpeedValue = 50,
-    SpeedMode = "velocity" -- velocity ou cframe
+    SpeedMode = "velocity",
+    Theme = "DarkTheme"
 }
 
 local Players = game:GetService("Players")
@@ -20,9 +23,54 @@ local highlightObjects = {}
 local speedConnection = nil
 local velocityInstance = nil
 
+-- Tema LiquidGlass Customizado
+local LiquidGlassTheme = {
+    SchemeColor = Color3.fromRGB(100, 200, 255),
+    Background = Color3.fromRGB(20, 25, 35),
+    Header = Color3.fromRGB(30, 40, 55),
+    TextColor = Color3.fromRGB(255, 255, 255),
+    ElementColor = Color3.fromRGB(25, 35, 50)
+}
+
 -- Loadstring GUI (Kavo UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("🚀 HACK MENU v6.0 - NO ROLLBACK", "DarkTheme")
+local Window = Library.CreateLib("🍌 BANANA EATS v1.1 | by UnderJonh", getgenv().Config.Theme)
+
+-- ===== THEME TAB =====
+local ThemeTab = Window:NewTab("🎨 Themes")
+local ThemeSec = ThemeTab:NewSection("Escolha seu tema")
+
+local themes = {
+    "DarkTheme", "LightTheme", "GrapeTheme", "BloodTheme", 
+    "Ocean", "Midnight", "Sentinel", "Synapse"
+}
+
+for _, themeName in pairs(themes) do
+    ThemeSec:NewButton(themeName, "Aplicar tema " .. themeName, function()
+        getgenv().Config.Theme = themeName
+        pcall(function()
+            game.CoreGui:FindFirstChild("Kavo"):Destroy()
+        end)
+        
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+        Window = Library.CreateLib("🍌 BANANA EATS v1.1 | by UnderJonh", themeName)
+        
+        warn("⚠️ GUI recriada! Tema aplicado: " .. themeName)
+        warn("🔄 Execute o script novamente para aplicar completamente")
+    end)
+end
+
+ThemeSec:NewButton("LiquidGlass (Custom)", "Tema translúcido estilo iOS 26", function()
+    pcall(function()
+        game.CoreGui:FindFirstChild("Kavo"):Destroy()
+    end)
+    
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+    Window = Library.CreateLib("🍌 BANANA EATS v1.1 | by UnderJonh", LiquidGlassTheme)
+    
+    warn("✨ LiquidGlass Theme Aplicado!")
+    warn("🔄 Execute o script novamente para recriar todas as funcionalidades")
+end)
 
 -- ===== ESP TAB =====
 local ESPTab = Window:NewTab("👁️ Visuals")
@@ -61,11 +109,11 @@ ESPSec:NewToggle("WallHack", "Highlight através de paredes", function(state)
     end
 end)
 
--- ===== SPEED TAB (SEM ROLLBACK) =====
+-- ===== SPEED TAB =====
 local SpeedTab = Window:NewTab("⚡ Movement")
 local SpeedSec = SpeedTab:NewSection("Speed (No Rollback)")
 
-SpeedSec:NewToggle("Velocity Speed", "Usa AssemblyVelocity (SEM ROLLBACK)", function(state)
+SpeedSec:NewToggle("Velocity Speed", "Usa BodyVelocity (SEM ROLLBACK)", function(state)
     getgenv().Config.Speed = state
     getgenv().Config.SpeedMode = "velocity"
     if state then
@@ -87,9 +135,34 @@ SpeedSec:NewButton("Speed Normal (WalkSpeed)", "Pode causar rollback", function(
     end
 end)
 
+-- ===== CREDITS TAB =====
+local CreditsTab = Window:NewTab("📌 Credits")
+local CreditsSec = CreditsTab:NewSection("Desenvolvedor")
+
+CreditsSec:NewLabel("🍌 BANANA EATS v1.1")
+CreditsSec:NewLabel("Desenvolvido por: UnderJonh")
+CreditsSec:NewLabel("GitHub: github.com/underjonh")
+CreditsSec:NewLabel("")
+CreditsSec:NewLabel("⭐ Se gostou, deixe uma estrela!")
+
+CreditsSec:NewButton("📋 Copiar GitHub Link", "Copia para área de transferência", function()
+    setclipboard("https://github.com/underjonh")
+    warn("✅ Link copiado: https://github.com/underjonh")
+end)
+
+CreditsSec:NewButton("🌐 Abrir GitHub", "Abre perfil no navegador", function()
+    warn("🌐 Abrindo: https://github.com/underjonh")
+end)
+
+local InfoSec = CreditsTab:NewSection("Informações do Script")
+InfoSec:NewLabel("Versão: 1.1")
+InfoSec:NewLabel("Data: 22/12/2025")
+InfoSec:NewLabel("Tema Atual: " .. getgenv().Config.Theme)
+InfoSec:NewLabel("Features: ESP, WallHack, Speed")
+
 -- ===== MISC TAB =====
 local MiscTab = Window:NewTab("⚙️ Misc")
-local MiscSec = MiscTab:NewSection("Outras Opções")
+local MiscSec = MiscTab:NewSection("Configurações")
 
 MiscSec:NewButton("Destroy GUI", "Remove o menu", function()
     Library:ToggleUI()
@@ -102,7 +175,6 @@ end)
 
 -- ===== FUNÇÕES CORE =====
 
--- ESP (Drawing API)
 function createESP(target)
     if target == player or not target.Character then return end
     
@@ -144,7 +216,6 @@ function createESP(target)
     espConnections[target] = {box = box, connection = connection}
 end
 
--- WallHack
 function createWallHack(target)
     if target == player or not target.Character then return end
     
@@ -160,9 +231,8 @@ function createWallHack(target)
     highlightObjects[target] = highlight
 end
 
--- VELOCITY SPEED (SEM ROLLBACK)
 function enableVelocitySpeed()
-    disableSpeed() -- Remove conexões antigas
+    disableSpeed()
     
     speedConnection = RunService.Heartbeat:Connect(function()
         pcall(function()
@@ -172,7 +242,6 @@ function enableVelocitySpeed()
             local humanoid = player.Character:FindFirstChild("Humanoid")
             
             if humanoid and humanoid.MoveDirection.Magnitude > 0 then
-                -- Cria ou reutiliza BodyVelocity
                 if not velocityInstance or velocityInstance.Parent ~= hrp then
                     velocityInstance = Instance.new("BodyVelocity")
                     velocityInstance.Name = "SpeedBoost"
@@ -180,11 +249,9 @@ function enableVelocitySpeed()
                     velocityInstance.Parent = hrp
                 end
                 
-                -- Define velocidade baseada na direção de movimento
                 local moveDir = humanoid.MoveDirection
                 velocityInstance.Velocity = moveDir * getgenv().Config.SpeedValue
             else
-                -- Remove quando parado
                 if velocityInstance and velocityInstance.Parent then
                     velocityInstance:Destroy()
                     velocityInstance = nil
@@ -194,7 +261,6 @@ function enableVelocitySpeed()
     end)
 end
 
--- WALKSPEED (PODE DAR ROLLBACK)
 function enableWalkSpeed()
     disableSpeed()
     
@@ -218,7 +284,6 @@ function disableSpeed()
         velocityInstance = nil
     end
     
-    -- Restaura velocidade normal
     if player.Character and player.Character:FindFirstChild("Humanoid") then
         player.Character.Humanoid.WalkSpeed = 16
     end
@@ -228,7 +293,6 @@ end
 player.CharacterAdded:Connect(function(char)
     task.wait(1)
     
-    -- Reaplica speed se estava ativo
     if getgenv().Config.Speed then
         if getgenv().Config.SpeedMode == "velocity" then
             enableVelocitySpeed()
@@ -246,7 +310,6 @@ Players.PlayerAdded:Connect(function(p)
     end)
 end)
 
--- Aplica ESP/WH em jogadores existentes
 for _, p in pairs(Players:GetPlayers()) do
     if p ~= player and p.Character then
         if getgenv().Config.ESP then createESP(p) end
@@ -254,5 +317,9 @@ for _, p in pairs(Players:GetPlayers()) do
     end
 end
 
-print("🔥 HACK MENU v6.0 - NO ROLLBACK | RightShift = Toggle")
+print("🍌 BANANA EATS v1.1 Loaded!")
+print("👨‍💻 Desenvolvido por: UnderJonh")
+print("🌐 GitHub: https://github.com/underjonh")
+print("🎨 Tema Atual: " .. getgenv().Config.Theme)
 print("⚡ Velocity Speed = SEM ROLLBACK!")
+print("📌 RightShift = Toggle Menu")

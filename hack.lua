@@ -1,4 +1,4 @@
--- ⚡ UnderHack v6.0 - Universal Multi-Feature Script
+-- ⚡ UnderHack v7.0 - Universal Multi-Feature Script
 -- Desenvolvido por: UnderJonh (João Augusto)
 -- GitHub: https://github.com/underjonh
 -- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse
@@ -9,11 +9,10 @@ getgenv().Config = getgenv().Config or {
     WallHack = false,
     Speed = false,
     Fly = false,
-    AutoCollectCoins = false,
-    FreePurchase = false,
+    AutoCollect = false,
     SpeedValue = 50,
     FlySpeed = 50,
-    CoinFarmRadius = 100,
+    CollisionSize = 10,
     SpeedMode = "velocity",
     Theme = "DarkTheme"
 }
@@ -21,7 +20,6 @@ getgenv().Config = getgenv().Config or {
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 local espConnections = {}
@@ -31,12 +29,12 @@ local velocityInstance = nil
 local flyConnection = nil
 local flyVelocity = nil
 local flyGyro = nil
-local coinFarmConnection = nil
+local originalHitboxSizes = {}
 local flyKeys = {W = false, A = false, S = false, D = false, Space = false, LeftShift = false}
 
 -- Loadstring GUI (Kavo UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("⚡ UnderHack v6.0 | by UnderJonh", getgenv().Config.Theme)
+local Window = Library.CreateLib("⚡ UnderHack v7.0 | by UnderJonh", getgenv().Config.Theme)
 
 -- ===== THEME TAB =====
 local ThemeTab = Window:NewTab("🎨 Themes")
@@ -152,49 +150,60 @@ FlySec:NewLabel("Controles: WASD = movimento")
 FlySec:NewLabel("Space = subir | Shift = descer")
 
 -- ===== AUTO FARM TAB =====
-local FarmTab = Window:NewTab("💰 Auto Farm")
-local CoinSec = FarmTab:NewSection("Auto Coleta de Moedas")
+local FarmTab = Window:NewTab("💰 Farm")
+local CollectSec = FarmTab:NewSection("Auto Coleta por Hitbox")
 
-CoinSec:NewToggle("Auto Coletar Moedas", "Coleta moedas automaticamente", function(state)
-    getgenv().Config.AutoCollectCoins = state
+CollectSec:NewToggle("Aumentar Hitbox", "Expande sua área de colisão", function(state)
+    getgenv().Config.AutoCollect = state
     if state then
-        enableCoinFarm()
+        enableHitboxExpansion()
     else
-        disableCoinFarm()
+        disableHitboxExpansion()
     end
 end)
 
-CoinSec:NewSlider("Raio de Coleta", "Distância para coletar (10-200)", 200, 10, function(s)
-    getgenv().Config.CoinFarmRadius = s
-end)
-
-CoinSec:NewLabel("Coleta: Coins, Orbs, Collectibles")
-CoinSec:NewLabel("Funciona em qualquer jogo!")
-
-local PurchaseSec = FarmTab:NewSection("Compra Gratuita")
-
-PurchaseSec:NewToggle("Comprar Sem Dinheiro", "Bypass de verificação de moedas", function(state)
-    getgenv().Config.FreePurchase = state
-    if state then
-        enableFreePurchase()
-        warn("✅ Compra gratuita ativada! Tente comprar qualquer item")
-    else
-        disableFreePurchase()
-        warn("⚠️ Compra gratuita desativada")
+CollectSec:NewSlider("Tamanho da Hitbox", "Ajuste 5-50", 50, 5, function(s)
+    getgenv().Config.CollisionSize = s
+    if getgenv().Config.AutoCollect then
+        updateHitboxSize()
     end
 end)
 
-PurchaseSec:NewLabel("Atenção: Use com cuidado!")
-PurchaseSec:NewLabel("Pode não funcionar em todos os jogos")
-PurchaseSec:NewButton("Testar Compra", "Abre menu de compra se disponível", function()
-    findAndOpenShop()
+CollectSec:NewLabel("Coleta moedas automaticamente")
+CollectSec:NewLabel("ao aumentar sua área de toque!")
+
+local MoneySec = FarmTab:NewSection("Editor de Dinheiro")
+
+MoneySec:NewLabel("Modifica valores de moeda (client-side)")
+MoneySec:NewTextBox("Valor de Dinheiro", "Digite o valor", function(txt)
+    local amount = tonumber(txt)
+    if amount then
+        setPlayerMoney(amount)
+    else
+        warn("❌ Digite um número válido!")
+    end
 end)
+
+MoneySec:NewButton("Setar 1 Milhão", "Adiciona 1M de dinheiro", function()
+    setPlayerMoney(1000000)
+end)
+
+MoneySec:NewButton("Setar 10 Milhões", "Adiciona 10M de dinheiro", function()
+    setPlayerMoney(10000000)
+end)
+
+MoneySec:NewButton("Setar 100 Milhões", "Adiciona 100M de dinheiro", function()
+    setPlayerMoney(100000000)
+end)
+
+MoneySec:NewLabel("⚠️ Funciona apenas no cliente!")
+MoneySec:NewLabel("Pode não salvar no servidor")
 
 -- ===== CREDITS TAB =====
 local CreditsTab = Window:NewTab("📌 Credits")
 local CreditsSec = CreditsTab:NewSection("Desenvolvedor")
 
-CreditsSec:NewLabel("⚡ UnderHack v6.0")
+CreditsSec:NewLabel("⚡ UnderHack v7.0")
 CreditsSec:NewLabel("Desenvolvido por: UnderJonh")
 CreditsSec:NewLabel("⭐ Se gostou, deixe uma estrela!")
 CreditsSec:NewLabel("GitHub: github.com/underjonh")
@@ -205,8 +214,8 @@ CreditsSec:NewButton("📋 Copiar GitHub Link", "Copia para área de transferên
 end)
 
 local InfoSec = CreditsTab:NewSection("Informações")
-InfoSec:NewLabel("Versão: 6.0")
-InfoSec:NewLabel("NEW: Auto Farm + Free Purchase")
+InfoSec:NewLabel("Versão: 7.0")
+InfoSec:NewLabel("NEW: Hitbox Farm + Money Editor")
 InfoSec:NewLabel("Features: ESP, WallHack, Speed, Fly")
 
 -- ===== MISC TAB =====
@@ -216,8 +225,7 @@ local MiscSec = MiscTab:NewSection("Configurações")
 MiscSec:NewButton("Destroy GUI", "Remove o menu", function()
     disableSpeed()
     disableFly()
-    disableCoinFarm()
-    disableFreePurchase()
+    disableHitboxExpansion()
     for _, data in pairs(espConnections) do
         if data and data.box then pcall(function() data.box:Remove() end) end
         if data and data.nameTag then pcall(function() data.nameTag:Remove() end) end
@@ -507,140 +515,88 @@ function disableFly()
     end
 end
 
--- ===== AUTO COIN FARM =====
-function enableCoinFarm()
-    disableCoinFarm()
+-- ===== HITBOX EXPANSION =====
+function enableHitboxExpansion()
+    if not player.Character then return end
     
-    warn("✅ Auto coleta de moedas ativada!")
-    
-    coinFarmConnection = RunService.Heartbeat:Connect(function()
-        pcall(function()
-            if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
-            
-            local hrp = player.Character.HumanoidRootPart
-            local radius = getgenv().Config.CoinFarmRadius
-            
-            -- Procura por moedas/orbs no workspace
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") or obj:IsA("MeshPart") then
-                    local name = obj.Name:lower()
-                    
-                    -- Detecta moedas comuns em jogos
-                    if name:find("coin") or name:find("orb") or name:find("collect") or 
-                       name:find("money") or name:find("cash") or name:find("gem") or
-                       name:find("currency") or name:find("pickup") then
-                        
-                        local distance = (obj.Position - hrp.Position).Magnitude
-                        
-                        if distance <= radius and obj:CanSetNetworkOwnership() then
-                            -- Teleporta a moeda para o player
-                            pcall(function()
-                                obj.CFrame = hrp.CFrame
-                                obj.CanCollide = false
-                                
-                                -- Força o toque se houver Touched event
-                                if obj:FindFirstChild("Touched") or obj.Touched then
-                                    firetouchinterest(hrp, obj, 0)
-                                    task.wait(0.05)
-                                    firetouchinterest(hrp, obj, 1)
-                                end
-                            end)
-                        end
-                    end
-                end
-            end
-        end)
-    end)
-end
-
-function disableCoinFarm()
-    if coinFarmConnection then
-        coinFarmConnection:Disconnect()
-        coinFarmConnection = nil
-        warn("⚠️ Auto coleta de moedas desativada")
-    end
-end
-
--- ===== FREE PURCHASE BYPASS =====
-local originalNamecall
-local originalIndex
-
-function enableFreePurchase()
-    -- Hook no Namecall para interceptar verificações de dinheiro
-    originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        -- Intercepta chamadas de verificação de moedas
-        if method == "InvokeServer" or method == "FireServer" then
-            local name = tostring(self)
-            
-            -- Comum em sistemas de compra
-            if name:find("Purchase") or name:find("Buy") or name:find("Shop") then
-                -- Tenta modificar argumentos de preço
-                for i, arg in pairs(args) do
-                    if type(arg) == "number" and arg > 0 then
-                        args[i] = 0  -- Seta preço para 0
-                    end
-                end
-                
-                warn("💰 Tentando compra gratuita...")
-            end
+    -- Salva tamanhos originais
+    for _, part in pairs(player.Character:GetChildren()) do
+        if part:IsA("BasePart") then
+            originalHitboxSizes[part] = part.Size
         end
-        
-        return originalNamecall(self, unpack(args))
-    end)
-    
-    -- Hook no Index para valores de moeda
-    originalIndex = hookmetamethod(game, "__index", function(self, key)
-        -- Intercepta leitura de valores de moeda
-        if type(key) == "string" then
-            local keyLower = key:lower()
-            
-            -- Comum em leaderstats ou valores de UI
-            if keyLower:find("money") or keyLower:find("cash") or 
-               keyLower:find("coin") or keyLower:find("currency") or
-               keyLower:find("balance") or keyLower:find("gem") then
-                
-                -- Retorna valor alto para passar verificações
-                if type(originalIndex(self, key)) == "number" then
-                    return 999999999
-                end
-            end
-        end
-        
-        return originalIndex(self, key)
-    end)
-    
-    warn("✅ Free Purchase ativado! Hooks instalados")
-end
-
-function disableFreePurchase()
-    if originalNamecall then
-        hookmetamethod(game, "__namecall", originalNamecall)
-        originalNamecall = nil
     end
     
-    if originalIndex then
-        hookmetamethod(game, "__index", originalIndex)
-        originalIndex = nil
-    end
-    
-    warn("⚠️ Free Purchase desativado! Hooks removidos")
+    updateHitboxSize()
+    warn("✅ Hitbox expandida! Colete moedas facilmente")
 end
 
-function findAndOpenShop()
+function updateHitboxSize()
+    if not player.Character then return end
+    
+    local size = getgenv().Config.CollisionSize
+    
     pcall(function()
-        -- Procura por GUIs de loja
-        for _, gui in pairs(player.PlayerGui:GetDescendants()) do
-            if gui:IsA("Frame") or gui:IsA("ScreenGui") then
-                local name = gui.Name:lower()
-                if name:find("shop") or name:find("store") or name:find("purchase") or name:find("buy") then
-                    gui.Visible = true
-                    warn("🛒 Menu de loja encontrado: " .. gui.Name)
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Size = Vector3.new(size, size, size)
+            hrp.Transparency = 0.7
+            hrp.CanCollide = false
+        end
+    end)
+end
+
+function disableHitboxExpansion()
+    if not player.Character then return end
+    
+    -- Restaura tamanhos originais
+    for part, originalSize in pairs(originalHitboxSizes) do
+        if part and part.Parent then
+            pcall(function()
+                part.Size = originalSize
+                if part.Name == "HumanoidRootPart" then
+                    part.Transparency = 1
+                end
+            end)
+        end
+    end
+    
+    originalHitboxSizes = {}
+    warn("⚠️ Hitbox restaurada ao tamanho normal")
+end
+
+-- ===== MONEY EDITOR =====
+function setPlayerMoney(amount)
+    pcall(function()
+        -- Tenta modificar leaderstats (mais comum)
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, stat in pairs(leaderstats:GetChildren()) do
+                local statName = stat.Name:lower()
+                if statName:find("money") or statName:find("cash") or 
+                   statName:find("coin") or statName:find("gold") or 
+                   statName:find("currency") or statName:find("dollar") then
+                    stat.Value = amount
+                    warn("✅ Dinheiro alterado: " .. stat.Name .. " = " .. amount)
+                    return
                 end
             end
         end
+        
+        -- Tenta modificar valores diretos no player
+        for _, obj in pairs(player:GetChildren()) do
+            if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+                local objName = obj.Name:lower()
+                if objName:find("money") or objName:find("cash") or 
+                   objName:find("coin") or objName:find("gold") then
+                    obj.Value = amount
+                    warn("✅ Dinheiro alterado: " .. obj.Name .. " = " .. amount)
+                    return
+                end
+            end
+        end
+        
+        warn("⚠️ Não encontrei variável de dinheiro no jogo!")
+        warn("💡 Isso é client-side, pode não funcionar em todos os jogos")
     end)
 end
 
@@ -661,8 +617,8 @@ player.CharacterAdded:Connect(function(char)
         enableFly()
     end
     
-    if getgenv().Config.AutoCollectCoins then
-        enableCoinFarm()
+    if getgenv().Config.AutoCollect then
+        enableHitboxExpansion()
     end
 end)
 
@@ -702,12 +658,12 @@ for _, p in pairs(Players:GetPlayers()) do
     end)
 end
 
-print("⚡ UnderHack v6.0 Loaded!")
+print("⚡ UnderHack v7.0 Loaded!")
 print("👨‍💻 Desenvolvido por: UnderJonh (João Augusto)")
 print("🌐 GitHub: https://github.com/underjonh")
-print("✨ NEW Features: Auto Coin Farm + Free Purchase!")
-print("💰 Auto Farm: Coleta moedas automaticamente")
-print("🛒 Free Purchase: Compre sem dinheiro (use com cuidado)")
+print("✨ Features: Hitbox Farm + Money Editor!")
+print("💰 Hitbox: Expande área de colisão para coletar")
+print("💵 Money: Modifica valores de moeda (client-side)")
 print("⚡ Velocity Speed = SEM ROLLBACK!")
 print("🚁 Fly = Camera-based controls (WASD + Space/Shift)")
 print("📌 RightShift = Toggle Menu")

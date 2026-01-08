@@ -1,4 +1,4 @@
--- 🍌 BANANA EATS v1.4 - Multi-Theme Hack Menu
+-- ⚡ UnderHack v5.0 - Universal Multi-Feature Script
 -- Desenvolvido por: UnderJonh (João Augusto)
 -- GitHub: https://github.com/underjonh
 -- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse
@@ -8,7 +8,9 @@ getgenv().Config = getgenv().Config or {
     ESP = false,
     WallHack = false,
     Speed = false,
+    Fly = false,
     SpeedValue = 50,
+    FlySpeed = 50,
     SpeedMode = "velocity",
     Theme = "DarkTheme"
 }
@@ -22,10 +24,14 @@ local espConnections = {}
 local highlightObjects = {}
 local speedConnection = nil
 local velocityInstance = nil
+local flyConnection = nil
+local flyVelocity = nil
+local flyGyro = nil
+local flyKeys = {W = false, A = false, S = false, D = false, Space = false, LeftShift = false}
 
 -- Loadstring GUI (Kavo UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("🍌 BANANA EATS v1.4 | by UnderJonh", getgenv().Config.Theme)
+local Window = Library.CreateLib("⚡ UnderHack v5.0 | by UnderJonh", getgenv().Config.Theme)
 
 -- ===== THEME TAB =====
 local ThemeTab = Window:NewTab("🎨 Themes")
@@ -88,14 +94,18 @@ ESPSec:NewToggle("WallHack", "Highlight através de paredes", function(state)
     end
 end)
 
--- ===== SPEED TAB =====
-local SpeedTab = Window:NewTab("⚡ Movement")
-local SpeedSec = SpeedTab:NewSection("Speed (No Rollback)")
+-- ===== MOVEMENT TAB =====
+local MovementTab = Window:NewTab("⚡ Movement")
+local SpeedSec = MovementTab:NewSection("Speed (No Rollback)")
 
 SpeedSec:NewToggle("Velocity Speed", "Usa BodyVelocity (SEM ROLLBACK)", function(state)
     getgenv().Config.Speed = state
     getgenv().Config.SpeedMode = "velocity"
     if state then
+        if getgenv().Config.Fly then
+            getgenv().Config.Fly = false
+            disableFly()
+        end
         enableVelocitySpeed()
     else
         disableSpeed()
@@ -114,11 +124,33 @@ SpeedSec:NewButton("Speed Normal (WalkSpeed)", "Pode causar rollback", function(
     end
 end)
 
+local FlySec = MovementTab:NewSection("Fly Mode (Camera-Based)")
+
+FlySec:NewToggle("Enable Fly", "Voa com controles WASD + Space/Shift", function(state)
+    getgenv().Config.Fly = state
+    if state then
+        if getgenv().Config.Speed then
+            getgenv().Config.Speed = false
+            disableSpeed()
+        end
+        enableFly()
+    else
+        disableFly()
+    end
+end)
+
+FlySec:NewSlider("Velocidade de Voo", "Ajuste 10-200", 200, 10, function(s)
+    getgenv().Config.FlySpeed = s
+end)
+
+FlySec:NewLabel("Controles: WASD = movimento")
+FlySec:NewLabel("Space = subir | Shift = descer")
+
 -- ===== CREDITS TAB =====
 local CreditsTab = Window:NewTab("📌 Credits")
 local CreditsSec = CreditsTab:NewSection("Desenvolvedor")
 
-CreditsSec:NewLabel("🍌 BANANA EATS v1.4")
+CreditsSec:NewLabel("⚡ UnderHack v5.0")
 CreditsSec:NewLabel("Desenvolvido por: UnderJonh")
 CreditsSec:NewLabel("⭐ Se gostou, deixe uma estrela!")
 CreditsSec:NewLabel("GitHub: github.com/underjonh")
@@ -129,8 +161,8 @@ CreditsSec:NewButton("📋 Copiar GitHub Link", "Copia para área de transferên
 end)
 
 local InfoSec = CreditsTab:NewSection("Informações")
-InfoSec:NewLabel("Versão: 1.4")
-InfoSec:NewLabel("Features: ESP, WallHack, Speed")
+InfoSec:NewLabel("Versão: 5.0")
+InfoSec:NewLabel("Features: ESP, WallHack, Speed, Fly")
 
 -- ===== MISC TAB =====
 local MiscTab = Window:NewTab("⚙️ Misc")
@@ -138,6 +170,7 @@ local MiscSec = MiscTab:NewSection("Configurações")
 
 MiscSec:NewButton("Destroy GUI", "Remove o menu", function()
     disableSpeed()
+    disableFly()
     for _, data in pairs(espConnections) do
         if data and data.box then pcall(function() data.box:Remove() end) end
         if data and data.nameTag then pcall(function() data.nameTag:Remove() end) end
@@ -301,6 +334,142 @@ function disableSpeed()
     end
 end
 
+function enableFly()
+    disableFly()
+    
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    local hrp = char.HumanoidRootPart
+    local humanoid = char:FindFirstChild("Humanoid")
+    
+    -- BodyVelocity para movimento
+    flyVelocity = Instance.new("BodyVelocity")
+    flyVelocity.Name = "FlyVelocity"
+    flyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+    flyVelocity.Velocity = Vector3.new(0, 0, 0)
+    flyVelocity.Parent = hrp
+    
+    -- BodyGyro para estabilização
+    flyGyro = Instance.new("BodyGyro")
+    flyGyro.Name = "FlyGyro"
+    flyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+    flyGyro.P = 10000
+    flyGyro.CFrame = hrp.CFrame
+    flyGyro.Parent = hrp
+    
+    -- Desabilita gravidade
+    if humanoid then
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+        humanoid:ChangeState(Enum.HumanoidStateType.Flying)
+    end
+    
+    -- Input listener
+    local inputBegin = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.W then flyKeys.W = true
+        elseif input.KeyCode == Enum.KeyCode.A then flyKeys.A = true
+        elseif input.KeyCode == Enum.KeyCode.S then flyKeys.S = true
+        elseif input.KeyCode == Enum.KeyCode.D then flyKeys.D = true
+        elseif input.KeyCode == Enum.KeyCode.Space then flyKeys.Space = true
+        elseif input.KeyCode == Enum.KeyCode.LeftShift then flyKeys.LeftShift = true
+        end
+    end)
+    
+    local inputEnd = UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.W then flyKeys.W = false
+        elseif input.KeyCode == Enum.KeyCode.A then flyKeys.A = false
+        elseif input.KeyCode == Enum.KeyCode.S then flyKeys.S = false
+        elseif input.KeyCode == Enum.KeyCode.D then flyKeys.D = false
+        elseif input.KeyCode == Enum.KeyCode.Space then flyKeys.Space = false
+        elseif input.KeyCode == Enum.KeyCode.LeftShift then flyKeys.LeftShift = false
+        end
+    end)
+    
+    -- Loop de voo
+    flyConnection = RunService.Heartbeat:Connect(function()
+        pcall(function()
+            if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+            if not flyVelocity or not flyGyro then return end
+            
+            local cam = workspace.CurrentCamera
+            local hrp = player.Character.HumanoidRootPart
+            local speed = getgenv().Config.FlySpeed
+            
+            local moveVector = Vector3.new(0, 0, 0)
+            
+            -- Direção baseada na câmera
+            if flyKeys.W then
+                moveVector = moveVector + cam.CFrame.LookVector
+            end
+            if flyKeys.S then
+                moveVector = moveVector - cam.CFrame.LookVector
+            end
+            if flyKeys.A then
+                moveVector = moveVector - cam.CFrame.RightVector
+            end
+            if flyKeys.D then
+                moveVector = moveVector + cam.CFrame.RightVector
+            end
+            if flyKeys.Space then
+                moveVector = moveVector + Vector3.new(0, 1, 0)
+            end
+            if flyKeys.LeftShift then
+                moveVector = moveVector - Vector3.new(0, 1, 0)
+            end
+            
+            -- Aplica velocidade
+            if moveVector.Magnitude > 0 then
+                moveVector = moveVector.Unit
+            end
+            
+            flyVelocity.Velocity = moveVector * speed
+            flyGyro.CFrame = cam.CFrame
+        end)
+    end)
+    
+    -- Armazena conexões para cleanup
+    getgenv()._flyConnections = {inputBegin, inputEnd}
+    
+    warn("✅ Fly ativado! Use WASD + Space/Shift para voar")
+end
+
+function disableFly()
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+    
+    if flyVelocity and flyVelocity.Parent then
+        flyVelocity:Destroy()
+        flyVelocity = nil
+    end
+    
+    if flyGyro and flyGyro.Parent then
+        flyGyro:Destroy()
+        flyGyro = nil
+    end
+    
+    if getgenv()._flyConnections then
+        for _, conn in pairs(getgenv()._flyConnections) do
+            pcall(function() conn:Disconnect() end)
+        end
+        getgenv()._flyConnections = nil
+    end
+    
+    -- Reseta keys
+    for k, _ in pairs(flyKeys) do
+        flyKeys[k] = false
+    end
+    
+    -- Restaura estado do humanoid
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        local humanoid = player.Character.Humanoid
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+    end
+end
+
 -- ===== EVENTOS =====
 
 player.CharacterAdded:Connect(function(char)
@@ -312,6 +481,10 @@ player.CharacterAdded:Connect(function(char)
         else
             enableWalkSpeed()
         end
+    end
+    
+    if getgenv().Config.Fly then
+        enableFly()
     end
 end)
 
@@ -351,8 +524,10 @@ for _, p in pairs(Players:GetPlayers()) do
     end)
 end
 
-print("🍌 BANANA EATS v1.4 Loaded!")
+print("⚡ UnderHack v5.0 Loaded!")
 print("👨‍💻 Desenvolvido por: UnderJonh (João Augusto)")
 print("🌐 GitHub: https://github.com/underjonh")
+print("✨ Features: ESP, WallHack, Speed, Fly")
 print("⚡ Velocity Speed = SEM ROLLBACK!")
+print("🚁 Fly = Camera-based controls (WASD + Space/Shift)")
 print("📌 RightShift = Toggle Menu")

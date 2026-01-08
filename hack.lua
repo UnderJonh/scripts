@@ -1,4 +1,4 @@
--- ⚡ UnderHack v5.0 - Universal Multi-Feature Script
+-- ⚡ UnderHack v6.0 - Universal Multi-Feature Script
 -- Desenvolvido por: UnderJonh (João Augusto)
 -- GitHub: https://github.com/underjonh
 -- Temas: DarkTheme, LightTheme, GrapeTheme, BloodTheme, Ocean, Midnight, Sentinel, Synapse
@@ -9,8 +9,11 @@ getgenv().Config = getgenv().Config or {
     WallHack = false,
     Speed = false,
     Fly = false,
+    AutoCollectCoins = false,
+    FreePurchase = false,
     SpeedValue = 50,
     FlySpeed = 50,
+    CoinFarmRadius = 100,
     SpeedMode = "velocity",
     Theme = "DarkTheme"
 }
@@ -18,6 +21,7 @@ getgenv().Config = getgenv().Config or {
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 local espConnections = {}
@@ -27,11 +31,12 @@ local velocityInstance = nil
 local flyConnection = nil
 local flyVelocity = nil
 local flyGyro = nil
+local coinFarmConnection = nil
 local flyKeys = {W = false, A = false, S = false, D = false, Space = false, LeftShift = false}
 
 -- Loadstring GUI (Kavo UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("⚡ UnderHack v5.0 | by UnderJonh", getgenv().Config.Theme)
+local Window = Library.CreateLib("⚡ UnderHack v6.0 | by UnderJonh", getgenv().Config.Theme)
 
 -- ===== THEME TAB =====
 local ThemeTab = Window:NewTab("🎨 Themes")
@@ -146,11 +151,50 @@ end)
 FlySec:NewLabel("Controles: WASD = movimento")
 FlySec:NewLabel("Space = subir | Shift = descer")
 
+-- ===== AUTO FARM TAB =====
+local FarmTab = Window:NewTab("💰 Auto Farm")
+local CoinSec = FarmTab:NewSection("Auto Coleta de Moedas")
+
+CoinSec:NewToggle("Auto Coletar Moedas", "Coleta moedas automaticamente", function(state)
+    getgenv().Config.AutoCollectCoins = state
+    if state then
+        enableCoinFarm()
+    else
+        disableCoinFarm()
+    end
+end)
+
+CoinSec:NewSlider("Raio de Coleta", "Distância para coletar (10-200)", 200, 10, function(s)
+    getgenv().Config.CoinFarmRadius = s
+end)
+
+CoinSec:NewLabel("Coleta: Coins, Orbs, Collectibles")
+CoinSec:NewLabel("Funciona em qualquer jogo!")
+
+local PurchaseSec = FarmTab:NewSection("Compra Gratuita")
+
+PurchaseSec:NewToggle("Comprar Sem Dinheiro", "Bypass de verificação de moedas", function(state)
+    getgenv().Config.FreePurchase = state
+    if state then
+        enableFreePurchase()
+        warn("✅ Compra gratuita ativada! Tente comprar qualquer item")
+    else
+        disableFreePurchase()
+        warn("⚠️ Compra gratuita desativada")
+    end
+end)
+
+PurchaseSec:NewLabel("Atenção: Use com cuidado!")
+PurchaseSec:NewLabel("Pode não funcionar em todos os jogos")
+PurchaseSec:NewButton("Testar Compra", "Abre menu de compra se disponível", function()
+    findAndOpenShop()
+end)
+
 -- ===== CREDITS TAB =====
 local CreditsTab = Window:NewTab("📌 Credits")
 local CreditsSec = CreditsTab:NewSection("Desenvolvedor")
 
-CreditsSec:NewLabel("⚡ UnderHack v5.0")
+CreditsSec:NewLabel("⚡ UnderHack v6.0")
 CreditsSec:NewLabel("Desenvolvido por: UnderJonh")
 CreditsSec:NewLabel("⭐ Se gostou, deixe uma estrela!")
 CreditsSec:NewLabel("GitHub: github.com/underjonh")
@@ -161,7 +205,8 @@ CreditsSec:NewButton("📋 Copiar GitHub Link", "Copia para área de transferên
 end)
 
 local InfoSec = CreditsTab:NewSection("Informações")
-InfoSec:NewLabel("Versão: 5.0")
+InfoSec:NewLabel("Versão: 6.0")
+InfoSec:NewLabel("NEW: Auto Farm + Free Purchase")
 InfoSec:NewLabel("Features: ESP, WallHack, Speed, Fly")
 
 -- ===== MISC TAB =====
@@ -171,6 +216,8 @@ local MiscSec = MiscTab:NewSection("Configurações")
 MiscSec:NewButton("Destroy GUI", "Remove o menu", function()
     disableSpeed()
     disableFly()
+    disableCoinFarm()
+    disableFreePurchase()
     for _, data in pairs(espConnections) do
         if data and data.box then pcall(function() data.box:Remove() end) end
         if data and data.nameTag then pcall(function() data.nameTag:Remove() end) end
@@ -343,14 +390,12 @@ function enableFly()
     local hrp = char.HumanoidRootPart
     local humanoid = char:FindFirstChild("Humanoid")
     
-    -- BodyVelocity para movimento
     flyVelocity = Instance.new("BodyVelocity")
     flyVelocity.Name = "FlyVelocity"
     flyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
     flyVelocity.Velocity = Vector3.new(0, 0, 0)
     flyVelocity.Parent = hrp
     
-    -- BodyGyro para estabilização
     flyGyro = Instance.new("BodyGyro")
     flyGyro.Name = "FlyGyro"
     flyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
@@ -358,13 +403,11 @@ function enableFly()
     flyGyro.CFrame = hrp.CFrame
     flyGyro.Parent = hrp
     
-    -- Desabilita gravidade
     if humanoid then
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
         humanoid:ChangeState(Enum.HumanoidStateType.Flying)
     end
     
-    -- Input listener
     local inputBegin = UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == Enum.KeyCode.W then flyKeys.W = true
@@ -386,7 +429,6 @@ function enableFly()
         end
     end)
     
-    -- Loop de voo
     flyConnection = RunService.Heartbeat:Connect(function()
         pcall(function()
             if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
@@ -398,7 +440,6 @@ function enableFly()
             
             local moveVector = Vector3.new(0, 0, 0)
             
-            -- Direção baseada na câmera
             if flyKeys.W then
                 moveVector = moveVector + cam.CFrame.LookVector
             end
@@ -418,7 +459,6 @@ function enableFly()
                 moveVector = moveVector - Vector3.new(0, 1, 0)
             end
             
-            -- Aplica velocidade
             if moveVector.Magnitude > 0 then
                 moveVector = moveVector.Unit
             end
@@ -428,7 +468,6 @@ function enableFly()
         end)
     end)
     
-    -- Armazena conexões para cleanup
     getgenv()._flyConnections = {inputBegin, inputEnd}
     
     warn("✅ Fly ativado! Use WASD + Space/Shift para voar")
@@ -457,17 +496,152 @@ function disableFly()
         getgenv()._flyConnections = nil
     end
     
-    -- Reseta keys
     for k, _ in pairs(flyKeys) do
         flyKeys[k] = false
     end
     
-    -- Restaura estado do humanoid
     if player.Character and player.Character:FindFirstChild("Humanoid") then
         local humanoid = player.Character.Humanoid
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
         humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
     end
+end
+
+-- ===== AUTO COIN FARM =====
+function enableCoinFarm()
+    disableCoinFarm()
+    
+    warn("✅ Auto coleta de moedas ativada!")
+    
+    coinFarmConnection = RunService.Heartbeat:Connect(function()
+        pcall(function()
+            if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+            
+            local hrp = player.Character.HumanoidRootPart
+            local radius = getgenv().Config.CoinFarmRadius
+            
+            -- Procura por moedas/orbs no workspace
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") or obj:IsA("MeshPart") then
+                    local name = obj.Name:lower()
+                    
+                    -- Detecta moedas comuns em jogos
+                    if name:find("coin") or name:find("orb") or name:find("collect") or 
+                       name:find("money") or name:find("cash") or name:find("gem") or
+                       name:find("currency") or name:find("pickup") then
+                        
+                        local distance = (obj.Position - hrp.Position).Magnitude
+                        
+                        if distance <= radius and obj:CanSetNetworkOwnership() then
+                            -- Teleporta a moeda para o player
+                            pcall(function()
+                                obj.CFrame = hrp.CFrame
+                                obj.CanCollide = false
+                                
+                                -- Força o toque se houver Touched event
+                                if obj:FindFirstChild("Touched") or obj.Touched then
+                                    firetouchinterest(hrp, obj, 0)
+                                    task.wait(0.05)
+                                    firetouchinterest(hrp, obj, 1)
+                                end
+                            end)
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+function disableCoinFarm()
+    if coinFarmConnection then
+        coinFarmConnection:Disconnect()
+        coinFarmConnection = nil
+        warn("⚠️ Auto coleta de moedas desativada")
+    end
+end
+
+-- ===== FREE PURCHASE BYPASS =====
+local originalNamecall
+local originalIndex
+
+function enableFreePurchase()
+    -- Hook no Namecall para interceptar verificações de dinheiro
+    originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        -- Intercepta chamadas de verificação de moedas
+        if method == "InvokeServer" or method == "FireServer" then
+            local name = tostring(self)
+            
+            -- Comum em sistemas de compra
+            if name:find("Purchase") or name:find("Buy") or name:find("Shop") then
+                -- Tenta modificar argumentos de preço
+                for i, arg in pairs(args) do
+                    if type(arg) == "number" and arg > 0 then
+                        args[i] = 0  -- Seta preço para 0
+                    end
+                end
+                
+                warn("💰 Tentando compra gratuita...")
+            end
+        end
+        
+        return originalNamecall(self, unpack(args))
+    end)
+    
+    -- Hook no Index para valores de moeda
+    originalIndex = hookmetamethod(game, "__index", function(self, key)
+        -- Intercepta leitura de valores de moeda
+        if type(key) == "string" then
+            local keyLower = key:lower()
+            
+            -- Comum em leaderstats ou valores de UI
+            if keyLower:find("money") or keyLower:find("cash") or 
+               keyLower:find("coin") or keyLower:find("currency") or
+               keyLower:find("balance") or keyLower:find("gem") then
+                
+                -- Retorna valor alto para passar verificações
+                if type(originalIndex(self, key)) == "number" then
+                    return 999999999
+                end
+            end
+        end
+        
+        return originalIndex(self, key)
+    end)
+    
+    warn("✅ Free Purchase ativado! Hooks instalados")
+end
+
+function disableFreePurchase()
+    if originalNamecall then
+        hookmetamethod(game, "__namecall", originalNamecall)
+        originalNamecall = nil
+    end
+    
+    if originalIndex then
+        hookmetamethod(game, "__index", originalIndex)
+        originalIndex = nil
+    end
+    
+    warn("⚠️ Free Purchase desativado! Hooks removidos")
+end
+
+function findAndOpenShop()
+    pcall(function()
+        -- Procura por GUIs de loja
+        for _, gui in pairs(player.PlayerGui:GetDescendants()) do
+            if gui:IsA("Frame") or gui:IsA("ScreenGui") then
+                local name = gui.Name:lower()
+                if name:find("shop") or name:find("store") or name:find("purchase") or name:find("buy") then
+                    gui.Visible = true
+                    warn("🛒 Menu de loja encontrado: " .. gui.Name)
+                end
+            end
+        end
+    end)
 end
 
 -- ===== EVENTOS =====
@@ -485,6 +659,10 @@ player.CharacterAdded:Connect(function(char)
     
     if getgenv().Config.Fly then
         enableFly()
+    end
+    
+    if getgenv().Config.AutoCollectCoins then
+        enableCoinFarm()
     end
 end)
 
@@ -524,10 +702,12 @@ for _, p in pairs(Players:GetPlayers()) do
     end)
 end
 
-print("⚡ UnderHack v5.0 Loaded!")
+print("⚡ UnderHack v6.0 Loaded!")
 print("👨‍💻 Desenvolvido por: UnderJonh (João Augusto)")
 print("🌐 GitHub: https://github.com/underjonh")
-print("✨ Features: ESP, WallHack, Speed, Fly")
+print("✨ NEW Features: Auto Coin Farm + Free Purchase!")
+print("💰 Auto Farm: Coleta moedas automaticamente")
+print("🛒 Free Purchase: Compre sem dinheiro (use com cuidado)")
 print("⚡ Velocity Speed = SEM ROLLBACK!")
 print("🚁 Fly = Camera-based controls (WASD + Space/Shift)")
 print("📌 RightShift = Toggle Menu")
